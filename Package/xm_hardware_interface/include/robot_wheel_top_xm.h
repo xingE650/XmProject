@@ -1,6 +1,7 @@
 #ifndef ROBOT_WHEEL_TOP_H
 #define ROBOT_WHEEL_TOP_H
-
+#include "board_controller.h"
+#include  "robot_abstract.h"
 #include "robot_wheel_config_xm.h"
 #include "hf_link.h"
 
