@@ -1,88 +1,42 @@
 /***********************************************************************************************************************
-* Copyright (c) Hands Free Team. All rights reserved.
-* FileName: BSP_TOP.c
-* Contact:  QQ Exchange Group -- 521037187
-* Version:  V2.0
-*
-* LICENSING TERMS:
-* The Hands Free is licensed generally under a permissive 3-clause BSD license.
-* Contributions are requiredto be made under the same license.
-*
-* History:
-* <author>      <time>      <version>      <desc>
-* mawenke       2016.7.1    V2.0           creat this file
-*
+* 晓萌 STM32F405主控板  
+* 创建日期:2017/7/27
+* 版本：V1.3
+* 西北工业大学舞蹈机器人基地 家政2015电子组		
+************************************************************************************************************************
+* 1.文件名：board_controller.cpp
+* 2.功能：板级抽象层，链接底层函数与package
+* 3.已使用的IO口：
 ***********************************************************************************************************************/
+#include "board_controller.h"
 
-#include "board.h"
+Board_controller  board_controller;
 
-#ifdef CONTROL_UNIT_V2
-
-Board board;
-
-Board::Board(){
-    cnt_1ms = 0;
+Board_controller::Board_controller(){
+    cnt_1ms = 0;          //初始化各项参数
     cnt_2ms = 0;
     cnt_5ms = 0;
     cnt_10ms = 0;
     cnt_20ms = 0;
     cnt_50ms  = 0;
     cnt_500ms = 0 ;
-    board_call_i = 0 ;
-    board_call_j = 0 ;
-    board_call_k = 0 ;
-    battery_voltage_  = 0;
-    battery_voltage_alarm_ = 0 ;
-    battery_proportion_ = 0 ;
-    temperature_ = 0;
-    beep_alarm_cnt_ = 0;
-    battery_voltage_alarm_ = 10.00 ;
-    battery_proportion_ = 11.00 ;
-		usart_value =0;
+	usart_value =0;
 }
-
 /***********************************************************************************************************************
-* Function:     void Board::boardBasicInit(void)
-*
-* Scope:        public
-*
-* Description:
-*
-* Arguments:
-*
-* Return:
-*
-* Cpu_Time:
-*
-* History:
+* 1.函数名：boardBasicInit
+* 2.功能：板级总初始化，包括各外设的初始化
 ***********************************************************************************************************************/
-void Board::boardBasicInit(void)    //各个端口初始化
+void Board_controller::boardBasicInit(void)    //各个端口初始化
 {
-    int i;
-//    for(i=0;i<0x8f;i++);
-
     HF_System_Timer_Init();         //Initialize the measurement systemm
-    //debugInterfaceInit();
-       
-	
     ledInit();
-		xm_communicate_Init();
-//    keyInit();
-//    beepInit();
-
-    //HF_RTC_Init();                //Initialize the RTC, if return 0:failed,else if return 1:succeeded
-    //HF_IWDG_Init();               //Initialize the independed watch dog, system will reset if not feeding dog over 1s
-		//HF_ADC_Moder_Init(0X3E00 , 5 , 2.5f);  //ADC init
-    //HF_Timer_Init(TIM2 , 20000);     //timer6 init , 1000us
-		HF_Timer_Init(TIM6 , 1000);     //timer6 init , 1000us
-		//motor_commu_Init();  //gpio初始化
-		//GYPOS_commu_Init();
-		//xm_platform_init();
-		 
-		//mpu6050_Init();
-//    setBeepState(1);
-//    delay_ms(500);
-//    setBeepState(0);
+	xm_communicate_Init();
+    HF_Timer_Init(TIM6 , 1000);     //timer6 init , 1000us
+	motor_commu_Init();  //gpio初始化
+    GYPOS_commu_Init();
+	xm_platform_init();
+    //HF_ADC_Moder_Init(0X3E00 , 5 , 2.5f);  //ADC init
+	mpu6050_Init();
 }
 
 /***********************************************************************************************************************
@@ -100,113 +54,26 @@ void Board::boardBasicInit(void)    //各个端口初始化
 *
 * History:
 ***********************************************************************************************************************/
-void Board::boardBasicCall(void)   //100HZ
+void Board_controller::boardBasicCall(void)   //100HZ
 {
-    board_call_i++;
-    board_call_j++;
-    board_call_k++;
-
-    keyStateRenew();
-
-    if(board_call_i >= 20) //5HZ
-    {
-        board_call_i=0;
-        //HF_IWDG_Feed(); //Feeding Dog
-        system_time = HF_Get_System_Time();  //system working time (unit:us), start after power-on
-        if(board_call_k > 500) //wait 5s for a stable battery_voltage
-        {
-            board_call_k = 500;
-
-            cpu_temperature = getCPUTemperature();
-            battery_voltage = getBatteryVoltage();
-            if( (battery_voltage > 7) && (battery_voltage < battery_voltage_alarm_) )
-            {
-                beep_alarm_cnt_++;
-                if(beep_alarm_cnt_ >=20)
-                {
-                    setBeepState(2);
-                }
-            }
-            else if( battery_voltage > (battery_voltage_alarm_+0.2f) )
-            {
-                beep_alarm_cnt_ =0;
-                setBeepState(0);
-            }
-        }
-
-    }
-    if(board_call_j >= 100) //1hz
-    {
-        board_call_j=0;
-        //HF_RTC_Time_Renew(); //updating time
-    }
-
+   
 }
-void Board::motor_commu_Init(void)
+void Board_controller::motor_commu_Init(void)
 {
 	HF_CAN_Init(CAN1 , 0);
 }
 
-void Board::motor_sendmsg(unsigned int ID, uint8_t *TxBuf)
+void Board_controller::motor_sendmsg(unsigned int ID, uint8_t *TxBuf)
 {
 	HF_CANTX_Message(CAN1 , ID , TxBuf);
 }
 
-void Board::GYPOS_commu_Init(void)
+void Board_controller::GYPOS_commu_Init(void)
 {
 	HF_CAN_Init(CAN2 , 0);
 }
-void Board::debugInterfaceInit(void)
-{
-    HF_USART_Init(USART1 , 921600 , 0);  //debug USART init
-}
-
-void Board::debugPutChar(uint8_t txbyte_)
-{
-    USART_SendData(USART1 , txbyte_);
-    while(USART_GetFlagStatus(USART1, USART_FLAG_TXE) == RESET);
-}
 
 
-
-float Board::getBatteryVoltage(void)
-{
-    //0.33 is the loss voltage of diode
-    battery_voltage_ = 0.8f * battery_voltage_+ 0.2f*(float)( 0.33f + HF_Get_ADC_Output(1) * battery_proportion_ ) ;
-    return battery_voltage_ ;
-}
-
-float Board::getCPUUsage(void)
-{
-#if  SYSTEM_SUPPORT_OS > 0u
-
-#ifdef 	OS_CRITICAL_METHOD        //support UCOSII
-    cpu_usage = OSCPUUsage;
-    return cpu_usage;
-#endif
-
-#ifdef 	CPU_CFG_CRITICAL_METHOD   //support UCOSIII
-    cpu_usage = OSStatTaskCPUUsage;
-    return cpu_usage;
-#endif
-
-#endif
-    return 0;
-}
-
-float Board::getCPUTemperature(void)
-{
-    temperature_ = 0.8f*temperature_ + 0.2f*( (HF_Get_ADC_Output(6) - 0.76f ) / 0.0025f +25 ) ;
-    return temperature_;
-}
-
-void Board::getCPUInfo(void)
-{   //get ID of CPU and capacity of Flash
-    chipUniqueID[0] = *(__IO u32 *)(0x1FFF7A10); // MSB
-    chipUniqueID[1] = *(__IO u32 *)(0x1FFF7A14); //
-    chipUniqueID[2] = *(__IO u32 *)(0x1FFF7A18); // LSB
-    flashSize =  *(__IO u16 *)(0x1FFF7A22);      //Unit:KB
-}
 
 /***********************************************************************************************************************
 * Function:
@@ -223,7 +90,7 @@ void Board::getCPUInfo(void)
 *
 * History:
 ***********************************************************************************************************************/
-void Board::ledInit(void)
+void Board_controller::ledInit(void)
 {
     GPIO_InitTypeDef  GPIO_InitStruct;
     GPIO_InitStruct.GPIO_Mode = GPIO_Mode_OUT;
@@ -234,13 +101,9 @@ void Board::ledInit(void)
     RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC,ENABLE);
     GPIO_InitStruct.GPIO_Pin = GPIO_Pin_1|GPIO_Pin_2 ;
     GPIO_Init(GPIOC , &GPIO_InitStruct);
-		GPIO_ResetBits(GPIOC,GPIO_Pin_1 | GPIO_Pin_2);//GPIOA7,A8设置高，灯灭  GPIOA4控制485输入输出
-//    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC,ENABLE);
-//    GPIO_InitStruct.GPIO_Pin = GPIO_Pin_13;
-//    GPIO_Init(GPIOC , &GPIO_InitStruct);
-
+	GPIO_ResetBits(GPIOC,GPIO_Pin_1 | GPIO_Pin_2);//GPIOA7,A8设置高，灯灭  GPIOA4控制485输入输出
 }
-void Board::mpu6050_Init(void)
+void Board_controller::mpu6050_Init(void)
 {
 	  HF_USART_Init(USART1 , 921600 , 0);  //mpu6050 USART init
 }
@@ -260,8 +123,9 @@ void Board::mpu6050_Init(void)
 *
 * History:
 ***********************************************************************************************************************/
-void Board::setLedState(uint8_t led_id, uint8_t operation){
-    if ( led_id == 0){
+void Board_controller::setLedState(uint8_t led_id, uint8_t operation){
+    if ( led_id == 0)
+	{
         if(operation == 0){ GPIO_SetBits(GPIOC , GPIO_Pin_1);}
         else if(operation == 1) { GPIO_ResetBits(GPIOC , GPIO_Pin_1);}
 				else if(operation == 2) { GPIO_ToggleBits(GPIOC , GPIO_Pin_1);}
@@ -271,37 +135,8 @@ void Board::setLedState(uint8_t led_id, uint8_t operation){
         else if(operation == 1) { GPIO_ResetBits(GPIOC , GPIO_Pin_2);}
 				else if(operation == 2) { GPIO_ToggleBits(GPIOC , GPIO_Pin_2);}
     }
-//    else if(led_id == 2){
-//        if(operation == 0){ GPIO_SetBits(GPIOC , GPIO_Pin_13);}
-//        else if(operation == 1) { GPIO_ResetBits(GPIOC , GPIO_Pin_13);}
-//        else if(operation == 2) { GPIO_ToggleBits(GPIOC , GPIO_Pin_13);}
-//    }
-//    else if(led_id == 3){
-//        if(operation == 0){ GPIO_SetBits(GPIOE , GPIO_Pin_0);}
-//        else if(operation == 1) { GPIO_ResetBits(GPIOE , GPIO_Pin_0);}
-//        else if(operation == 2) { GPIO_ToggleBits(GPIOE , GPIO_Pin_0);}
-//    }
 }
 
-/***********************************************************************************************************************
-* Function:
-*
-* Scope:
-*
-* Description:
-*
-* Arguments:
-*
-* Return:
-*
-* Cpu_Time:
-*
-* History:
-***********************************************************************************************************************/
-void Board::keyInit(void)
-{
-
-}
 /***********************************************************************************************************************
 * Function:485init
 *
@@ -317,68 +152,20 @@ void Board::keyInit(void)
 *
 * History:
 ***********************************************************************************************************************/
-void Board::xm_communicate_Init(void)
+void Board_controller::xm_communicate_Init(void)
 {
 	rs485Init(USART2,921600,0);
 	rs485_cmd(0);
 	//HC05_Init(UART4,9600,0);
 }
-void Board::rs485_cmd(unsigned char state)//0 rx_enable 1 tx_enable
+void Board_controller::rs485_cmd(unsigned char state)//0 rx_enable 1 tx_enable
 {
 	if(state==0)GPIO_ResetBits(GPIOA,GPIO_Pin_1);
 	if(state==1)GPIO_SetBits(GPIOA,GPIO_Pin_1);
 }
-void Board::HC05_Init(USART_TypeDef* USARTx , uint32_t BaudRate , uint8_t GPIO_AF)
-{
-	HF_USART_Init(USARTx ,BaudRate ,GPIO_AF);
-}
-/***********************************************************************************************************************
-* Function:
-*
-* Scope:
-*
-* Description:
-*
-* Arguments:
-*
-* Return:
-*
-* Cpu_Time:
-*
-* History:
-***********************************************************************************************************************/
-void Board::keyStateRenew(void){
 
 
-}
-
-/***********************************************************************************************************************
-* Function:
-*
-* Scope:
-*
-* Description:
-*
-* Arguments:
-*
-* Return:
-*
-* Cpu_Time:
-*
-* History:
-***********************************************************************************************************************/
-void Board::beepInit(void)
-{
-    GPIO_InitTypeDef  GPIO_InitStruct;
-    GPIO_InitStruct.GPIO_Mode = GPIO_Mode_OUT;
-    GPIO_InitStruct.GPIO_OType = GPIO_OType_PP;
-    GPIO_InitStruct.GPIO_Speed = GPIO_Speed_100MHz;
-    GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_UP;
-    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOE,ENABLE);
-    GPIO_InitStruct.GPIO_Pin = GPIO_Pin_1 ;
-    GPIO_Init(GPIOE , &GPIO_InitStruct);
-}
-void Board::xm_platform_init(void)
+void Board_controller::xm_platform_init(void)
 {
 	GPIO_InitTypeDef GPIO_InitStructure;
 	
@@ -393,36 +180,16 @@ void Board::xm_platform_init(void)
 	
 }
 
-void Board::Foreward_Move(void)
+void Board_controller::Foreward_Move(void)
 {
 	GPIO_SetBits(GPIOA,GPIO_Pin_8);
 }
 
-void Board::Backward_Move(void)
+void Board_controller::Backward_Move(void)
 {
 	GPIO_ResetBits(GPIOA,GPIO_Pin_8);
 }
-/***********************************************************************************************************************
-* Function:
-*
-* Scope:
-*
-* Description:
-*
-* Arguments:
-*
-* Return:
-*
-* Cpu_Time:
-*
-* History:
-***********************************************************************************************************************/
-void Board::setBeepState(uint8_t operation)
-{
-    if(operation == 0) { GPIO_ResetBits(GPIOE , GPIO_Pin_1);  }
-    else if(operation == 1) { GPIO_SetBits(GPIOE , GPIO_Pin_1); }
-    else if(operation == 2) { GPIO_ToggleBits(GPIOE , GPIO_Pin_1); }
-}
+
 
 
 /***********************************************************************************************************************
@@ -440,7 +207,7 @@ void Board::setBeepState(uint8_t operation)
 *
 * History:
 ***********************************************************************************************************************/
-void Board::motorInterfaceInit(uint8_t motor_id , float motor_pwm_T)
+void Board_controller::motorInterfaceInit(uint8_t motor_id , float motor_pwm_T)
 {
     GPIO_InitTypeDef  GPIO_InitStructure;
     GPIO_StructInit(&GPIO_InitStructure);
@@ -503,7 +270,7 @@ void Board::motorInterfaceInit(uint8_t motor_id , float motor_pwm_T)
 *
 * History:
 ***********************************************************************************************************************/
-void Board::motorEnable(uint8_t motor_id)
+void Board_controller::motorEnable(uint8_t motor_id)
 {
     if(motor_id == 1 ){
         GPIO_SetBits(GPIOE , GPIO_Pin_8);
@@ -534,22 +301,6 @@ void Board::motorEnable(uint8_t motor_id)
 *
 * History:
 ***********************************************************************************************************************/
-void Board::motorDisable(uint8_t motor_id)
-{
-    if(motor_id == 1 ){
-        GPIO_ResetBits(GPIOE , GPIO_Pin_8);
-    }
-    else if(motor_id == 2){
-        GPIO_ResetBits(GPIOE , GPIO_Pin_12);
-    }
-    else if(motor_id == 3){
-        GPIO_ResetBits(GPIOE , GPIO_Pin_4);
-    }
-    else if(motor_id == 4){
-        GPIO_ResetBits(GPIOE , GPIO_Pin_15);
-    }
-}
-
 /***********************************************************************************************************************
 * Function:
 *
@@ -565,78 +316,7 @@ void Board::motorDisable(uint8_t motor_id)
 *
 * History:
 ***********************************************************************************************************************/
-float Board::getMotorEncoderCNT(uint8_t motor_id)
-{
-    if(motor_id == 1 ){
-        return HF_Get_Encode_TIM2();
-    }
-    else if(motor_id == 2){
-        return HF_Get_Encode_TIM3();
-    }
-    else if(motor_id == 3){
-        return HF_Get_Encode_TIM4();
-    }
-    else if(motor_id == 4){
-        return HF_Get_Encode_TIM5();
-    }
-    return 0;
-}
-
-/***********************************************************************************************************************
-* Function:
-*
-* Scope:
-*
-* Description:
-*
-* Arguments:
-*
-* Return:
-*
-* Cpu_Time:
-*
-* History:
-***********************************************************************************************************************/
-float Board::getMotorCurrent(uint8_t motor_id)
-{
-    float motor_current;
-
-    if(motor_id == 1 ){
-        motor_current = 2.94f * HF_Get_ADC_Output(2);
-        return motor_current;
-    }
-    else if(motor_id == 2){
-        motor_current = 2.94f * HF_Get_ADC_Output(3);
-        return motor_current;
-    }
-    else if(motor_id == 3){
-        motor_current = 2.94f * HF_Get_ADC_Output(4);
-        return motor_current;
-    }
-    else if(motor_id == 4){
-        motor_current = 2.94f * HF_Get_ADC_Output(5);
-        return motor_current;
-    }
-
-    return 0;
-}
-
-/***********************************************************************************************************************
-* Function:
-*
-* Scope:
-*
-* Description:
-*
-* Arguments:
-*
-* Return:
-*
-* Cpu_Time:
-*
-* History:
-***********************************************************************************************************************/
-void Board::motorSetPWM(uint8_t motor_id , int pwm_value)
+void Board_controller::motorSetPWM(uint8_t motor_id , int pwm_value)
 {
     if( motor_id ==1 ){
         if( pwm_value > 0) {
@@ -704,9 +384,9 @@ void Board::motorSetPWM(uint8_t motor_id , int pwm_value)
 *
 * History:
 ***********************************************************************************************************************/
-void Board::axServoInterfaceInit(void)
+void Board_controller::axServoInterfaceInit(void)
 {
-    GPIO_InitTypeDef GPIO_InitStructure;
+//    GPIO_InitTypeDef GPIO_InitStructure;
 
     HF_USART_Init(USART3 , 115200 , 0);
 
@@ -718,20 +398,20 @@ void Board::axServoInterfaceInit(void)
 //    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
 //    GPIO_Init(GPIOD , &GPIO_InitStructure);
 }
-void Board::axServoTxModel(void)
+void Board_controller::axServoTxModel(void)
 {
     USART_ITConfig(USART3, USART_IT_RXNE, DISABLE);//开启相关中断
 }
-void Board::axServoRxModel(void)
+void Board_controller::axServoRxModel(void)
 {
     USART_ITConfig(USART3, USART_IT_RXNE, ENABLE);//开启相关中断
 }
-void Board::axServoSendTxByte(uint8_t tx_byte)
+void Board_controller::axServoSendTxByte(uint8_t tx_byte)
 {
     USART_SendData(USART3 , tx_byte);
     while(USART_GetFlagStatus(USART3 , USART_FLAG_TC) == RESET);
 }
-uint8_t Board::axServoGetRxByte(uint8_t *error)
+uint8_t Board_controller::axServoGetRxByte(uint8_t *error)
 {
     return 0;
 }
@@ -751,7 +431,7 @@ uint8_t Board::axServoGetRxByte(uint8_t *error)
 *
 * History:
 ***********************************************************************************************************************/
-void Board::sbusInterfaceInit(void)
+void Board_controller::sbusInterfaceInit(void)
 {
     HF_USART_Init(USART2,100000,1);
 }
@@ -771,49 +451,6 @@ void Board::sbusInterfaceInit(void)
 *
 * History:
 ***********************************************************************************************************************/
-void Board::imuI2CInit(void)
-{
-    HF_Simulat_I2C_Init(1);
-}
-
-void Board::imuI2CWriteByte(uint8_t equipment_address , uint8_t reg_address ,
-                            uint8_t reg_data , uint8_t fastmode)
-{
-    HF_Simulat_I2C_Write_Byte( 1 , equipment_address , reg_address , reg_data , fastmode);
-}
-
-
-uint8_t Board::imuI2CReadByte(uint8_t equipment_address , uint8_t reg_address , uint8_t fastmode)
-{
-    return HF_Simulat_I2C_Read_Byte( 1 , equipment_address , reg_address , fastmode) ;
-}
-
-uint8_t Board::imuI2CWriteBuf(uint8_t equipment_address,uint8_t reg_address,
-                              uint8_t* pt_char , uint8_t size , uint8_t fastmode)
-{
-    uint8_t temp;
-    temp = HF_Simulat_I2C_Write_Buf( 1 , equipment_address , reg_address , pt_char , size , fastmode);
-    return temp;
-}
-
-uint8_t Board::imuI2CReadBuf(uint8_t equipment_address,uint8_t reg_address,
-                             uint8_t * pt_char , uint8_t size , uint8_t fastmode)
-{
-    uint8_t temp;
-    temp = HF_Simulat_I2C_Read_Buf( 1 , equipment_address , reg_address , pt_char , size , fastmode);
-    return temp;
-}
-
-void Board::gpsInterfaceInit(void)
-{
-    HF_USART_Init(USART3 , 9600 , 2);
-}
-void Board::gpsSendTxByte(uint8_t tx_byte)
-{
-    while(USART_GetFlagStatus(USART3 , USART_FLAG_TC)==RESET);
-    USART_SendData(USART3 , tx_byte);
-}
-
 /***********************************************************************************************************************
 * Function:
 *
@@ -829,101 +466,7 @@ void Board::gpsSendTxByte(uint8_t tx_byte)
 *
 * History:
 ***********************************************************************************************************************/
-void Board::eepromI2CInit(void)
-{
-    HF_Simulat_I2C_Init(1);
-}
-
-void Board::eepromI2CWriteByte(uint8_t equipment_address , uint8_t reg_address ,
-                               uint8_t reg_data , uint8_t fastmode)
-{
-    HF_Simulat_I2C_Write_Byte( 1 , equipment_address , reg_address , reg_data , fastmode);
-}
-
-uint8_t Board::eepromI2CReadByte(uint8_t equipment_address , uint8_t reg_address , uint8_t fastmode)
-{
-    return HF_Simulat_I2C_Read_Byte( 1 , equipment_address , reg_address , fastmode) ;
-}
-
-uint8_t Board::eepromI2CWriteBuf(uint8_t equipment_address,uint8_t reg_address,
-                                 uint8_t* pt_char , uint8_t size , uint8_t fastmode)
-{
-    uint8_t temp;
-    temp = HF_Simulat_I2C_Write_Buf( 1 , equipment_address , reg_address , pt_char , size , fastmode);
-    return temp;
-}
-
-uint8_t Board::eepromI2CReadBuf(uint8_t equipment_address,uint8_t reg_address,
-                                uint8_t * pt_char , uint8_t size , uint8_t fastmode)
-{
-    uint8_t temp;
-    temp = HF_Simulat_I2C_Read_Buf( 1 , equipment_address , reg_address , pt_char , size , fastmode);
-    return temp;
-}
-
-/***********************************************************************************************************************
-* Function:
-*
-* Scope:
-*
-* Description:
-*
-* Arguments:
-*
-* Return:
-*
-* Cpu_Time:
-*
-* History:
-***********************************************************************************************************************/
-void Board::extendI2CInit(void)
-{
-    HF_Simulat_I2C_Init(2);
-}
-
-void Board::extendI2CWriteByte(uint8_t equipment_address , uint8_t reg_address ,
-                               uint8_t reg_data , uint8_t fastmode)
-{
-    HF_Simulat_I2C_Write_Byte( 2 , equipment_address , reg_address , reg_data , fastmode);
-}
-
-uint8_t Board::extendI2CReadByte(uint8_t equipment_address , uint8_t reg_address , uint8_t fastmode)
-{
-    return HF_Simulat_I2C_Read_Byte( 2 , equipment_address , reg_address , fastmode) ;
-}
-
-uint8_t Board::extendI2CWriteBuf(uint8_t equipment_address,uint8_t reg_address,
-                                 uint8_t* pt_char , uint8_t size , uint8_t fastmode)
-{
-    uint8_t temp;
-    temp = HF_Simulat_I2C_Write_Buf( 2 , equipment_address , reg_address , pt_char , size , fastmode);
-    return temp;
-}
-
-uint8_t Board::extendI2CReadBuf(uint8_t equipment_address,uint8_t reg_address,
-                                uint8_t * pt_char , uint8_t size , uint8_t fastmode)
-{
-    uint8_t temp;
-    temp = HF_Simulat_I2C_Read_Buf( 2 , equipment_address , reg_address , pt_char , size , fastmode);
-    return temp;
-}
-
-/***********************************************************************************************************************
-* Function:
-*
-* Scope:
-*
-* Description:
-*
-* Arguments:
-*
-* Return:
-*
-* Cpu_Time:
-*
-* History:
-***********************************************************************************************************************/
-void Board::pwmInterfaceInit(TIM_TypeDef* TIMx , uint8_t mode)
+void Board_controller::pwmInterfaceInit(TIM_TypeDef* TIMx , uint8_t mode)
 {
     if(mode == 0)     //motor mode
     {
@@ -949,7 +492,7 @@ void Board::pwmInterfaceInit(TIM_TypeDef* TIMx , uint8_t mode)
     }
 }
 
-void Board::setPWMValue(uint8_t channel_x , float pwm_value)
+void Board_controller::setPWMValue(uint8_t channel_x , float pwm_value)
 {
     if(pwm_value <0) return;
     if(channel_x == 1){
@@ -984,4 +527,3 @@ void Board::setPWMValue(uint8_t channel_x , float pwm_value)
     }
 }
 
-#endif
