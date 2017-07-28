@@ -553,7 +553,7 @@ int fputc(int ch, FILE *f)
 //	return 0;
 //    while((USART1->SR&0X40)==0);//cycle send until succeed
 //    USART1->DR = (u8) ch;
-//    return ch;
+    return ch;
 }
 
 #endif
