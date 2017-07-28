@@ -20,6 +20,63 @@
 #include "stdio.h"
 #include <string.h>
 
+
+namespace xm_hw
+{
+    namespace internal
+    {
+        // use for sending message using 485
+        void send_signal(uint8_t signal)
+        {
+            board.rs485_cmd(1);
+            
+            HF_USART_Put_Char(USART2 , signal);
+            
+            board.rs485_cmd(0);
+        }
+
+        unsigned char hFLinkSendBuffer(unsigned char port_num , unsigned char* buffer, unsigned short int size)
+        {
+            if(port_num == 1){
+                while(size--) 
+                    HF_USART_Put_Char(USART1 , *buffer++);
+                return 1;
+            }
+            else if(port_num == 2){
+                while(size--) //HF_USART_Put_Char(USART2 , *buffer++);
+                    send_signal(*buffer++);//due to we use the 485 communicate for hf_link
+                return 1;
+            }
+            else if(port_num == 3){
+                while(size--) 
+                    HF_USART_Put_Char(USART3 , *buffer++);
+                return 1;
+            }
+            else if(port_num == 4){
+                while(size--) 
+                    HF_USART_Put_Char(UART4 , *buffer++);
+                return 1;
+            }
+            return 0;
+        }
+
+        // use for testing
+        void get_master(void)
+        {
+            board.rs485_cmd(1);
+            char message[]="i catch the master";
+            char *p= message;
+            while(*(p)){
+            HF_USART_Put_Char(USART2 , *p);
+            HF_USART_Put_Char(UART4 , *p);
+            p++;
+            
+            }
+            board.rs485_cmd(0);
+        }
+        
+    }
+
 unsigned char HFLink::byteAnalysisCall(const unsigned char rx_byte)
 {
     unsigned char package_update=0;
@@ -318,7 +375,7 @@ unsigned char HFLink::setCommandAnalysis(const Command command_state , unsigned 
         {
 #if HF_LINK_NODE_MODEL == 0
 						send_signal(len);
-            send_signal(0xb1);//´òÓ¡´íÎó³¤¶È
+            send_signal(0xb1);//ï¿½ï¿½Ó¡ï¿½ï¿½ï¿½ó³¤¶ï¿½
 #endif
             return 0;
         }
@@ -551,4 +608,6 @@ void HFLink::sendMessage(void)
 
     send_packag_count++;
 }
+
+}//use namespace xm_hw
 

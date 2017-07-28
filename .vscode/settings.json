@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "usart.c": "cpp",
+        "vector": "cpp",
+        "string": "cpp"
+    }
+}

@@ -1,8 +1,6 @@
 #ifndef TF_2WD_H
 #define TF_2WD_H
 
-#include "board.h"
-#include "robot_abstract.h"
 #include "math.h"
 
 class TF_2WD

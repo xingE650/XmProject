@@ -1,0 +1,2 @@
+this sdk folder contains all the component used in the xm_hardware_interface, but in fact, all the other packages in the Packages is decouple, and they will be invoked in the hard_ware
+so use the controller_manager to implement the control-function in a standard way

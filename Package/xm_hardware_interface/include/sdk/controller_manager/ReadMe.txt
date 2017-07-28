@@ -1,0 +1,1 @@
+use the controller_manager to implement the control-function in a standard way, and it just provides a quite simple way to implement the control methods(just invoke the global variables to control the parts), if you have more time, you can think about how to promote this code
